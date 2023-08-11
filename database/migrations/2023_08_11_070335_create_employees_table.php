@@ -17,7 +17,7 @@ class CreateEmployeesTable extends Migration
             $table->id();
             $table->string('nama');
             $table->string('foto');
-            $table->integer('nik');
+            $table->bigInteger('nik');
             $table->enum('posisi',['Digital Marketing','Frontend','Backend']);
             $table->timestamps();
         });

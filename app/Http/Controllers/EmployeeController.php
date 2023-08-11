@@ -7,21 +7,51 @@ use App\Models\Employee;
 use Illuminate\Http\Request;
 use App\Exports\EmployeeExport;
 use App\Imports\EmployeeImport;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Session;
 
 class EmployeeController extends Controller
 {
-    public function index(Request $request){
-        if($request->has('search')){
-            $data = Employee::where('nama','LIKE','%' .$request->search.'%')->paginate(10);
-            Session::put('halaman_url', request()->fullUrl());
-        } else{
-            $data = Employee::paginate(10);
-            Session::put('halaman_url', request()->fullUrl());
+    public function index(Request $request)
+    {
+        $data = Employee::all();
+
+        if ($request->ajax()) {
+
+            // Filter data berdasarkan kolom
+            if ($request->has('search') && !empty($request->input('search')['value'])) {
+                $searchValue = $request->input('search')['value'];
+                $data->where(function ($query) use ($searchValue) {
+                    $query->where('nama', 'like', '%' . $searchValue . '%')
+                        ->orWhere('nik', 'like', '%' . $searchValue . '%')
+                        ->orWhere('posisi', 'like', '%' . $searchValue . '%');
+                });
+            }
+
+            // Menghitung total data tanpa filtering
+            $totalData = $data->count();
+
+            // Menghitung total data setelah filtering
+            $filteredData = $data->get();
+
+            // Pagination
+            $start = $request->input('start');
+            $length = $request->input('length');
+            $data = $data->skip($start)->take($length)->get();
+
+            // Bentuk response JSON sesuai format DataTables
+            $response = [
+                "draw" => intval($request->input('draw')),
+                "recordsTotal" => $totalData,
+                "recordsFiltered" => $filteredData->count(),
+                "data" => $data,
+            ];
+
+            return response()->json($response);
         }
 
-        return view('datapegawai',compact('data'));
+        return view('datapegawai', ['data' => $data]);
     }
 
     public function tambahpegawai(){
@@ -32,8 +62,11 @@ class EmployeeController extends Controller
         $this->validate($request,[
             'nama' => 'required',
             'nik' => 'required|min:12|max:13',
-            'posisi' => 'required',
-            'foto' => 'mimes:jpg,png,jpeg|image|max:2048',
+            'posisi' => [
+                'required',
+                Rule::in(['Digital Marketing','Frontend','Backend']),
+            ],
+            'foto' => 'required','mimes:jpg,png,jpeg|image|max:2048',
         ]);
         $data = Employee::create($request->all());
         if ($request->hasFile('foto')){
@@ -49,13 +82,28 @@ class EmployeeController extends Controller
         return view('tampildata', compact('data'));
     }
 
-    public function updatedata(Request $request, $id){
+    public function updateData(Request $request, $id)
+    {
+        // Validasi input menggunakan aturan validasi yang sesuai
+        $rules = [
+            'nama' => 'required|string|max:255',
+            'nik' => 'required|string|max:20|unique:employees,nik,' . $id, // Tambahkan pengecualian untuk ID saat validasi unik
+            'posisi' => 'required|string|max:255',
+        ];
+
+        $request->validate($rules);
+
+        // Temukan data pegawai berdasarkan ID
         $data = Employee::find($id);
+
+        // Lakukan pembaruan data
         $data->update($request->all());
-        if(session('halaman_url')){
-            return Redirect(session('halaman_url'))->with('success','Data Berhasil Diupdate');
+
+        if (session('halaman_url')) {
+            return redirect(session('halaman_url'))->with('success', 'Data Berhasil Diupdate');
         }
-        return redirect()->route('pegawai')->with('success','Data Berhasil Diupdate');
+
+        return redirect()->route('pegawai')->with('success', 'Data Berhasil Diupdate');
     }
 
     public function delete($id){

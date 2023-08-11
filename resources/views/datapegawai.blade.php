@@ -72,7 +72,7 @@
               </div>
 
             <div class="row">
-                <table class="table mt-2">
+                <table id="pegawaiTable" class="table mt-2">
                     <thead>
                       <tr>
                         <th scope="col">No</th>
@@ -85,29 +85,49 @@
                       </tr>
                     </thead>
                     <tbody>
-                    @php
-                      $no = 1;
-                    @endphp
-                    @foreach ($data as $index => $row)
+                    <?php for ($i = 0; $i < count($data); $i++) { ?>
                         <tr>
-                            <th scope="row">{{ $index + $data->firstItem() }}</th>
+                            <th scope="row"><?php echo $i + 1; ?></th>
                             <td>
-                              <img src="{{ asset('fotopegawai/'.$row->foto) }}" alt="" style="width: 40px;">
+                                <img src="<?php echo asset('fotopegawai/' . $data[$i]->foto); ?>" alt="" style="width: 40px;">
                             </td>
-                            <td>{{ $row->nama }}</td>
-                            <td>{{ $row->nik }}</td>
-                            <td>{{ $row->posisi }}</td>
-                            <td>{{ $row->created_at->format('D M Y') }}</td>
+                            <td><?php echo $data[$i]->nama; ?></td>
+                            <td><?php echo $data[$i]->nik; ?></td>
+                            <td><?php echo $data[$i]->posisi; ?></td>
+                            <td><?php echo date('D M Y', strtotime($data[$i]->created_at)); ?></td>
                             <td>
-                                <a href="/tampilkandata/{{ $row->id }}" class="btn btn-info">Edit</a>
-                                <a href="#" class="btn btn-danger delete" data-id="{{ $row->id }}" data-nama="{{ $row->nama }}" >Delete</a>
+                                <a href="/tampilkandata/<?php echo $data[$i]->id; ?>" class="btn btn-info">Edit</a>
+                                <a href="#" class="btn btn-danger delete" data-id="<?php echo $data[$i]->id; ?>" data-nama="<?php echo $data[$i]->nama; ?>">Delete</a>
                             </td>
                         </tr>
-                    @endforeach
+                    <?php } ?>
+                    @push('js')
+                    <script>
+                        $(document).ready(function() {
+                            $('#pegawaiTable').DataTable({
+                                serverSide: true,
+                                processing: true,
+                                ajax: {
+                                    url: "{{ route('pegawai') }}",
+                                    type: 'GET',
+                                },
+                                columns: [
+                                    { data: 'DT_RowIndex', name: 'DT_RowIndex' },
+                                    { data: 'foto', name: 'foto' },
+                                    { data: 'nama', name: 'nama' },
+                                    { data: 'nik', name: 'nik' },
+                                    { data: 'posisi', name: 'posisi' },
+                                    { data: 'created_at', name: 'created_at' },
+                                    { data: 'action', name: 'action', orderable: false, searchable: false },
+                                ]
+                            });
+                        });
+                    </script>
+                    @endpush
+
                       
                     </tbody>
                   </table>
-                  {{ $data->links() }}
             </div>
         </div>
     </div>
